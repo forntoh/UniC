@@ -35,6 +35,12 @@ import static utils.Validate.validatePort;
  */
 public class ClientTabController {
 
+    private static final int SHIFT_DIST = 5;
+    public static ObjectOutputStream objectOutputStream = null;
+    public static ObjectInputStream objectInputStream = null;
+    private static Socket clientSocket = null;
+    private static Screen remoteScreen;
+    private static Screen localScreen;
     @FXML
     private TextField ipAddrField;
     @FXML
@@ -49,17 +55,71 @@ public class ClientTabController {
     private Button btnDisconnect;
     @FXML
     private Button btnControl;
-
-    private static Socket clientSocket = null;
-    public static ObjectOutputStream objectOutputStream = null;
-    public static ObjectInputStream objectInputStream = null;
-    private static Screen remoteScreen;
-    private static Screen localScreen;
     private MouseEventHandler mouseMotionHandler;
     private KeyboardEventHandler keyboardEventHandler;
     private Robot robot;
     private Stage primaryStage;
-    private static final int SHIFT_DIST = 5;
+    //Called after RemoteScreen is selected and mouse is moved on RemoteScreen
+    private final OnMouseMoveListener onMouseMoveListener = new OnMouseMoveListener() {
+        @Override
+        public void onMove(int x, int y) {
+            sendMessageToServer("MOUSE_MOVE");
+            sendMessageToServer(x);
+            sendMessageToServer(y);
+
+            if (localScreen.getScreenPosition().equals("LEFT") && x < 2) {
+                startLocalMouseTracker(true);
+                robot.mouseMove((int) (localScreen.screenWidth - SHIFT_DIST), y);
+            } else if (localScreen.getScreenPosition().equals("RIGHT") && x > remoteScreen.screenWidth - 2) {
+                startLocalMouseTracker(true);
+                robot.mouseMove(SHIFT_DIST, y);
+            }
+        }
+    };
+    //Called when RemoteScreen is about to be selected
+    private OnChangeScreenListener changeScreenListener = new OnChangeScreenListener() {
+        @Override
+        public void changeScreens(double y) {
+            if (remoteScreen.getScreenPosition().equals("RIGHT"))
+                robot.mouseMove(SHIFT_DIST, (int) y);
+            else
+                robot.mouseMove((int) (remoteScreen.screenWidth - SHIFT_DIST), (int) y);
+            startLocalMouseTracker(false);
+        }
+    };
+
+    //this method is called to send message to server (Desktop)
+    public static void sendMessageToServer(Object message) {
+        try {
+            if (clientSocket == null) return;
+            objectOutputStream.writeObject(message);
+            objectOutputStream.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+            connectionClosed();
+        }
+    }
+
+    //Initialize local PC Overlay frame
+    private static Stage initializeOverlayStage() {
+        Stage primaryStage = new Stage();
+        GridPane root = new GridPane();
+        root.setOpacity(0.1);
+        primaryStage.setTitle("Hello World");
+        primaryStage.setScene(new Scene(root, 512, 300));
+        primaryStage.setFullScreen(true);
+        primaryStage.setOpacity(0.1);
+        return primaryStage;
+    }
+
+    public static void connectionClosed() {
+        try {
+            objectInputStream.close();
+            clientSocket.close();
+            objectOutputStream.close();
+        } catch (IOException | NullPointerException ignored) {
+        }
+    }
 
     public void onClickBtnConnect(MouseEvent mouseEvent) {
         String preStatus = labelStatus.getText();
@@ -156,48 +216,6 @@ public class ClientTabController {
         timer.schedule(task, 3000);
     }
 
-    //this method is called to send message to server (Desktop)
-    public static void sendMessageToServer(Object message) {
-        try {
-            if (clientSocket == null) return;
-            objectOutputStream.writeObject(message);
-            objectOutputStream.flush();
-        } catch (IOException e) {
-            e.printStackTrace();
-            connectionClosed();
-        }
-    }
-
-    //Called after RemoteScreen is selected and mouse is moved on RemoteScreen
-    private final OnMouseMoveListener onMouseMoveListener = new OnMouseMoveListener() {
-        @Override
-        public void onMove(int x, int y) {
-            sendMessageToServer("MOUSE_MOVE");
-            sendMessageToServer(x);
-            sendMessageToServer(y);
-
-            if (localScreen.getScreenPosition().equals("LEFT") && x < 2) {
-                startLocalMouseTracker(true);
-                robot.mouseMove((int) (localScreen.screenWidth - SHIFT_DIST), y);
-            } else if (localScreen.getScreenPosition().equals("RIGHT") && x > remoteScreen.screenWidth - 2) {
-                startLocalMouseTracker(true);
-                robot.mouseMove(SHIFT_DIST, y);
-            }
-        }
-    };
-
-    //Called when RemoteScreen is about to be selected
-    private OnChangeScreenListener changeScreenListener = new OnChangeScreenListener() {
-        @Override
-        public void changeScreens(double y) {
-            if (remoteScreen.getScreenPosition().equals("RIGHT"))
-                robot.mouseMove(SHIFT_DIST, (int) y);
-            else
-                robot.mouseMove((int) (remoteScreen.screenWidth - SHIFT_DIST), (int) y);
-            startLocalMouseTracker(false);
-        }
-    };
-
     // Remove RemoteMotionListener and add LocalMotionListener or vice versa
     private void startLocalMouseTracker(boolean toStart) {
         remoteScreen.setSelected(!toStart);
@@ -212,23 +230,5 @@ public class ClientTabController {
             primaryStage.removeEventFilter(KeyEvent.ANY, keyboardEventHandler);
             System.out.println("RemoteScreen selected");
         }
-    }
-
-    //Initialize local PC Overlay frame
-    private static Stage initializeOverlayStage() {
-        Stage primaryStage = new Stage();
-        GridPane root = new GridPane();
-        primaryStage.setTitle("Hello World");
-        primaryStage.setScene(new Scene(root, 512, 300));
-        primaryStage.setFullScreen(true);
-        return primaryStage;
-    }
-
-    public static void connectionClosed() {
-        try {
-            objectInputStream.close();
-            clientSocket.close();
-            objectOutputStream.close();
-        } catch (IOException | NullPointerException ignored) {}
     }
 }

@@ -6,7 +6,6 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.application.Platform;
 import javafx.scene.control.Label;
-import javafx.scene.input.KeyCode;
 import javafx.util.Duration;
 import viewcontrollers.ServerTabController;
 
@@ -16,8 +15,8 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
-import static viewcontrollers.ServerTabController.*;
 import static utils.Utils.showDialogMessage;
+import static viewcontrollers.ServerTabController.*;
 
 public class Server {
 
@@ -92,9 +91,11 @@ public class Server {
                 break;
             case "LEFT_MOUSE_PRESSED":
                 mouseControl.mousePress(InputEvent.BUTTON1_MASK);
+                System.out.println(message);
                 break;
             case "LEFT_MOUSE_RELEASED":
                 mouseControl.mouseRelease(InputEvent.BUTTON1_MASK);
+                System.out.println(message);
                 break;
             case "RIGHT_MOUSE_PRESSED":
                 mouseControl.mousePress(InputEvent.BUTTON3_MASK);
@@ -103,12 +104,12 @@ public class Server {
                 mouseControl.mouseRelease(InputEvent.BUTTON3_MASK);
                 break;
             case "KEY_PRESSED":
-                KeyCode keyCode = (KeyCode) objectInputStream.readObject();
-                mouseControl.keyPress(keyCode.impl_getCode());
+                int keyCode = (int) objectInputStream.readObject();
+                mouseControl.keyPress(keyCode);
                 break;
             case "KEY_RELEASED":
-                KeyCode keyCodE = (KeyCode) objectInputStream.readObject();
-                mouseControl.keyRelease(keyCodE.impl_getCode());
+                int keyCodE = (int) objectInputStream.readObject();
+                mouseControl.keyRelease(keyCodE);
                 break;
         }
     }
